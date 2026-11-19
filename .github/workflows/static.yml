@@ -1,0 +1,41 @@
+name: Publish Nightshift Arcade
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Prepare arcade games and connect online features
+        run: |
+          unzip -q nightshift-arcade-source.zip 'public/*' -d build
+          python3 - <<'PY'
+          import pathlib, re
+          home = pathlib.Path('build/public/index.html')
+          live = 'https://nightshift-arcade-280.weart1004.chatgpt.site/'
+          online = r'(discord|social-apps-4in1-ultimate|blooket-live-owner|gtag-fnaf-blooket-hd)'
+          html = re.sub(r'href="/?(' + online + r'\.html)', lambda m: 'href="' + live + m[1], home.read_text())
+          home.write_text(html)
+          PY
+          test -s build/public/index.html
+          test -s build/public/crossbones-isle.html
+          touch build/public/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/public
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
